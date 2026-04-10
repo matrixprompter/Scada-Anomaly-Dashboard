@@ -305,6 +305,12 @@ async def model_metrics():
     }
 
 
+@app.get("/")
+async def root():
+    """Root endpoint (Render health check)."""
+    return {"status": "ok", "service": "SCADA ML API"}
+
+
 @app.get("/health")
 async def health():
     """Servis saglik kontrolu."""
