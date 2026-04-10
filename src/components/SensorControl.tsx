@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Power, Loader2, Radio, Square, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type Phase = "idle" | "starting-server" | "server-ready" | "starting-ingest" | "ingesting" | "completed" | "stopping";
+type Phase = "idle" | "checking-server" | "server-ready" | "starting-ingest" | "ingesting" | "completed" | "stopping";
 
 interface SensorControlProps {
   onStateChange?: (phase: Phase) => void;
@@ -55,16 +55,16 @@ export function SensorControl({ onStateChange }: SensorControlProps) {
     };
   }, [phase]);
 
-  const startServer = useCallback(async () => {
-    setPhase("starting-server");
+  const checkServer = useCallback(async () => {
+    setPhase("checking-server");
     setError(null);
     try {
       const res = await fetch("/api/script/start-server", { method: "POST" });
       const data = await res.json();
-      if (data.status === "started" || data.status === "already_running") {
+      if (data.status === "already_running") {
         setPhase("server-ready");
       } else {
-        setError(data.message || "ML API baslatilamadi");
+        setError(data.message || "ML API erisilemedi");
         setPhase("idle");
       }
     } catch {
@@ -108,11 +108,11 @@ export function SensorControl({ onStateChange }: SensorControlProps) {
   }, []);
 
   const handleMainAction = () => {
-    if (phase === "idle") startServer();
+    if (phase === "idle") checkServer();
     else if (phase === "server-ready" || phase === "completed") startIngest();
   };
 
-  const isLoading = phase === "starting-server" || phase === "starting-ingest" || phase === "stopping";
+  const isLoading = phase === "checking-server" || phase === "starting-ingest" || phase === "stopping";
 
   const getMainButton = () => {
     switch (phase) {
@@ -123,9 +123,9 @@ export function SensorControl({ onStateChange }: SensorControlProps) {
           className: "bg-blue-600 hover:bg-blue-700 text-white",
           disabled: false,
         };
-      case "starting-server":
+      case "checking-server":
         return {
-          label: "Başlatılıyor…",
+          label: "Bağlanıyor…",
           icon: <Loader2 className="h-4 w-4 animate-spin" />,
           className: "bg-blue-600/70 text-white",
           disabled: true,

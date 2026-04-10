@@ -11,6 +11,8 @@ P1-205: FastAPI ML Servisi
 
 import json
 import io
+import asyncio
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -27,6 +29,10 @@ from explainer import SHAPExplainer
 from data_prep import SCADA_SENSOR_COLUMNS, SENSOR_COLUMNS, WINDOW_SIZE
 
 import supabase_client as db
+
+# Ingest task tracking
+_ingest_task: asyncio.Task | None = None
+_ingest_running: bool = False
 
 MODELS_DIR = Path(__file__).parent / "models" / "saved"
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -324,3 +330,74 @@ async def shap_values(anomaly_id: str | None = None):
         "shap_values": list(result["shap_values"].values()),
         "top_feature": result["shap_top_feature"],
     }
+
+
+# === Ingest Endpoint'leri (Render deploy icin) ===
+
+class IngestRequest(BaseModel):
+    next_url: str  # Vercel URL (e.g. https://scada-anomaly-dashboard.vercel.app)
+    units: int = 5
+    samples: int = 50
+    delay: float = 0.05
+
+
+async def _run_ingest(next_url: str, units: int, samples: int, delay: float):
+    """Ingest islemini background task olarak calistirir."""
+    global _ingest_running
+    _ingest_running = True
+    try:
+        from ingest_cmapss import ingest
+        import requests as req
+
+        # ML API kendi uzerinde calisacak (localhost)
+        ml_url = f"http://localhost:{os.environ.get('PORT', '8000')}"
+
+        # ingest fonksiyonunu sync olarak thread pool'da calistir
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(
+            None,
+            lambda: ingest(
+                ml_url=ml_url,
+                next_url=next_url,
+                max_units=units,
+                samples_per_unit=samples,
+                delay=delay,
+            ),
+        )
+    except asyncio.CancelledError:
+        print("Ingest iptal edildi.")
+    except Exception as e:
+        print(f"Ingest hatasi: {e}")
+    finally:
+        _ingest_running = False
+
+
+@app.post("/ingest")
+async def start_ingest(request: IngestRequest):
+    """NASA CMAPSS veri aktarimini baslatir (background task)."""
+    global _ingest_task
+    if _ingest_running:
+        return {"status": "already_running", "message": "Veri aktarimi zaten calisiyor"}
+
+    _ingest_task = asyncio.create_task(
+        _run_ingest(request.next_url, request.units, request.samples, request.delay)
+    )
+    return {"status": "started", "message": "NASA CMAPSS veri aktarimi baslatildi"}
+
+
+@app.post("/stop-ingest")
+async def stop_ingest():
+    """Calisan ingest islemini durdurur."""
+    global _ingest_task, _ingest_running
+    if _ingest_task and not _ingest_task.done():
+        _ingest_task.cancel()
+        _ingest_task = None
+        _ingest_running = False
+        return {"status": "stopped", "message": "Veri aktarimi durduruldu"}
+    return {"status": "not_running", "message": "Calisan veri aktarimi yok"}
+
+
+@app.get("/ingest-status")
+async def ingest_status():
+    """Ingest durumunu doner."""
+    return {"running": _ingest_running}
