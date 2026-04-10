@@ -33,6 +33,7 @@ import supabase_client as db
 # Ingest task tracking
 _ingest_task: asyncio.Task | None = None
 _ingest_running: bool = False
+_ingest_cancel: bool = False
 
 MODELS_DIR = Path(__file__).parent / "models" / "saved"
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -352,16 +353,17 @@ class IngestRequest(BaseModel):
 
 async def _run_ingest(next_url: str, units: int, samples: int, delay: float):
     """Ingest islemini background task olarak calistirir."""
-    global _ingest_running
+    global _ingest_running, _ingest_cancel
     _ingest_running = True
+    _ingest_cancel = False
     try:
         from ingest_cmapss import ingest
-        import requests as req
 
         # ML API kendi uzerinde calisacak (localhost)
         ml_url = f"http://localhost:{os.environ.get('PORT', '8000')}"
 
         # ingest fonksiyonunu sync olarak thread pool'da calistir
+        # cancel_flag kontrolu ingest icinde yapilir
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(
             None,
@@ -371,6 +373,7 @@ async def _run_ingest(next_url: str, units: int, samples: int, delay: float):
                 max_units=units,
                 samples_per_unit=samples,
                 delay=delay,
+                cancel_flag=lambda: _ingest_cancel,
             ),
         )
     except asyncio.CancelledError:
@@ -379,6 +382,7 @@ async def _run_ingest(next_url: str, units: int, samples: int, delay: float):
         print(f"Ingest hatasi: {e}")
     finally:
         _ingest_running = False
+        _ingest_cancel = False
 
 
 @app.post("/ingest")
@@ -397,9 +401,11 @@ async def start_ingest(request: IngestRequest):
 @app.post("/stop-ingest")
 async def stop_ingest():
     """Calisan ingest islemini durdurur."""
-    global _ingest_task, _ingest_running
-    if _ingest_task and not _ingest_task.done():
-        _ingest_task.cancel()
+    global _ingest_task, _ingest_running, _ingest_cancel
+    if _ingest_running:
+        _ingest_cancel = True
+        if _ingest_task and not _ingest_task.done():
+            _ingest_task.cancel()
         _ingest_task = None
         _ingest_running = False
         return {"status": "stopped", "message": "Veri aktarimi durduruldu"}

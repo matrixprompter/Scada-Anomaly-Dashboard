@@ -82,7 +82,7 @@ export default function DashboardPage() {
       })
       .catch(() => {});
 
-    fetch("/api/sensors?limit=100")
+    fetch("/api/sensors?limit=500")
       .then((r) => r.json())
       .then((res) => {
         const readings = res.data ?? [];
@@ -90,12 +90,12 @@ export default function DashboardPage() {
           .map((r: { anomaly_score: number | null }) => r.anomaly_score)
           .filter((s: number | null): s is number => s !== null && !isNaN(s));
         const avgScore = scores.length
-          ? +(scores.reduce((a: number, b: number) => a + b, 0) / scores.length).toFixed(2)
-          : 0;
+          ? (scores.reduce((a: number, b: number) => a + b, 0) / scores.length).toFixed(2)
+          : "0.00";
         setKpi((prev) => ({
           totalAnomalies: prev?.totalAnomalies ?? 0,
           activeDevices: prev?.activeDevices ?? 0,
-          avgScore,
+          avgScore: avgScore as unknown as number,
           last24h: prev?.last24h ?? 0,
           avgRul: prev?.avgRul ?? 0,
           criticalDevices: prev?.criticalDevices ?? 0,

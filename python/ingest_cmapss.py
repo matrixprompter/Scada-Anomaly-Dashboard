@@ -89,6 +89,7 @@ def ingest(
     max_units: int = 5,
     samples_per_unit: int = 50,
     delay: float = 0.05,
+    cancel_flag=None,
 ):
     df = load_data()
     valid_sensors = get_valid_sensors(df)
@@ -114,6 +115,10 @@ def ingest(
 
     sample_idx = 0
     for unit_id in units:
+        if cancel_flag and cancel_flag():
+            print("Ingest iptal edildi (cancel_flag).")
+            break
+
         device_id = DEVICE_MAP.get((unit_id - 1) % 5, "DEVICE-001")
         unit_data = df[df["unit_id"] == unit_id].sort_values("cycle")
 
@@ -234,6 +239,10 @@ def ingest(
                     f"  [{total_sent:04d}] unit={unit_id} -> {device_id} | "
                     f"anomaly={is_anomaly} | score={score:.3f} | rul={rul}"
                 )
+
+            if cancel_flag and cancel_flag():
+                print("Ingest iptal edildi (cancel_flag).")
+                break
 
             if delay > 0:
                 time.sleep(delay)

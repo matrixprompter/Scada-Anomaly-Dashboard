@@ -13,6 +13,7 @@ Built with **Next.js 16**, **React 19**, **FastAPI**, **Supabase**, and **PyTorc
 - [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
 - [Getting Started](#getting-started)
+- [Deployment](#deployment-production)
 - [Database Setup](#database-setup)
 - [ML Pipeline](#ml-pipeline)
 - [API Reference](#api-reference)
@@ -293,6 +294,44 @@ uvicorn main:app --reload --port 8000
 Open [http://localhost:3000](http://localhost:3000) to view the dashboard.
 
 Alternatively, use the **Sensor Control Panel** in the dashboard sidebar to start the ML API and data ingestion directly from the UI.
+
+---
+
+## Deployment (Production)
+
+The project is deployed as a split architecture:
+
+| Service | Platform | URL |
+|---|---|---|
+| Next.js Dashboard | **Vercel** (Free) | [scada-anomaly-dashboard.vercel.app](https://scada-anomaly-dashboard.vercel.app) |
+| FastAPI ML API | **Render** (Free) | [scada-ml-api.onrender.com](https://scada-ml-api.onrender.com) |
+| Database | **Supabase** (Free) | Managed PostgreSQL + pgvector |
+
+### How it works in production
+
+- The ML API runs on Render with pre-trained models (committed to repo, ~2MB total)
+- Next.js API routes proxy requests to the Render ML API via `ML_API_URL` env variable
+- NASA CMAPSS data is auto-extracted from the committed zip file on first use
+- Sensor Control buttons work the same way — they trigger HTTP calls to the Render API instead of spawning local processes
+- Render free tier sleeps after 15 min of inactivity; first request wakes it up (~30-50s cold start)
+
+### Vercel Environment Variables
+
+| Key | Value |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Your Supabase anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Your Supabase service role key |
+| `ML_API_URL` | Your Render ML API URL |
+
+### Render Environment Variables
+
+| Key | Value |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Your Supabase anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Your Supabase service role key |
+| `PYTHON_VERSION` | `3.11.11` |
 
 ---
 
