@@ -114,9 +114,11 @@ def ingest(
     print()
 
     sample_idx = 0
+    cancelled = False
     for unit_id in units:
         if cancel_flag and cancel_flag():
             print("Ingest iptal edildi (cancel_flag).")
+            cancelled = True
             break
 
         device_id = DEVICE_MAP.get((unit_id - 1) % 5, "DEVICE-001")
@@ -242,10 +244,15 @@ def ingest(
 
             if cancel_flag and cancel_flag():
                 print("Ingest iptal edildi (cancel_flag).")
+                cancelled = True
                 break
 
             if delay > 0:
                 time.sleep(delay)
+
+        # Inner loop break -> outer loop da break
+        if cancelled:
+            break
 
     # Son durum kontrolu: her cihazdaki guncel RUL'u goster
     print(f"\n--- Cihaz Durumlari ---")

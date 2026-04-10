@@ -13,6 +13,7 @@ import json
 import io
 import asyncio
 import os
+import threading
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -33,7 +34,7 @@ import supabase_client as db
 # Ingest task tracking
 _ingest_task: asyncio.Task | None = None
 _ingest_running: bool = False
-_ingest_cancel: bool = False
+_ingest_stop_event = threading.Event()  # Thread-safe cancel signal
 
 MODELS_DIR = Path(__file__).parent / "models" / "saved"
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -353,9 +354,9 @@ class IngestRequest(BaseModel):
 
 async def _run_ingest(next_url: str, units: int, samples: int, delay: float):
     """Ingest islemini background task olarak calistirir."""
-    global _ingest_running, _ingest_cancel
+    global _ingest_running
     _ingest_running = True
-    _ingest_cancel = False
+    _ingest_stop_event.clear()
     try:
         from ingest_cmapss import ingest
 
@@ -363,7 +364,6 @@ async def _run_ingest(next_url: str, units: int, samples: int, delay: float):
         ml_url = f"http://localhost:{os.environ.get('PORT', '8000')}"
 
         # ingest fonksiyonunu sync olarak thread pool'da calistir
-        # cancel_flag kontrolu ingest icinde yapilir
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(
             None,
@@ -373,7 +373,7 @@ async def _run_ingest(next_url: str, units: int, samples: int, delay: float):
                 max_units=units,
                 samples_per_unit=samples,
                 delay=delay,
-                cancel_flag=lambda: _ingest_cancel,
+                cancel_flag=_ingest_stop_event.is_set,
             ),
         )
     except asyncio.CancelledError:
@@ -382,7 +382,6 @@ async def _run_ingest(next_url: str, units: int, samples: int, delay: float):
         print(f"Ingest hatasi: {e}")
     finally:
         _ingest_running = False
-        _ingest_cancel = False
 
 
 @app.post("/ingest")
@@ -401,9 +400,10 @@ async def start_ingest(request: IngestRequest):
 @app.post("/stop-ingest")
 async def stop_ingest():
     """Calisan ingest islemini durdurur."""
-    global _ingest_task, _ingest_running, _ingest_cancel
+    global _ingest_task, _ingest_running
+    # Signal the thread to stop
+    _ingest_stop_event.set()
     if _ingest_running:
-        _ingest_cancel = True
         if _ingest_task and not _ingest_task.done():
             _ingest_task.cancel()
         _ingest_task = None
