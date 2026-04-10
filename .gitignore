@@ -52,5 +52,4 @@ __pycache__/
 /data/*.txt
 /data/metrics.json
 
-# saved models
-/python/models/saved/
+# saved models (committed for Render deployment - only 2MB total)
