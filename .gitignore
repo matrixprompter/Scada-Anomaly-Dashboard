@@ -39,3 +39,18 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# python
+/venv/
+__pycache__/
+*.pyc
+*.pth
+*.joblib
+
+# data
+/data/*.csv
+/data/*.txt
+/data/metrics.json
+
+# saved models
+/python/models/saved/
