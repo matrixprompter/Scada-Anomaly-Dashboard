@@ -10,7 +10,7 @@ export async function POST() {
   try {
     const res = await fetch(`${ML_API_URL}/stop-ingest`, {
       method: "POST",
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(60000),
     });
     if (res.ok) stopped.push("ingest");
   } catch {

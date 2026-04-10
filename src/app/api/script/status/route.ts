@@ -9,7 +9,7 @@ export async function GET() {
 
   // Check ML API health
   try {
-    const healthRes = await fetch(`${ML_API_URL}/health`, { signal: AbortSignal.timeout(5000) });
+    const healthRes = await fetch(`${ML_API_URL}/health`, { signal: AbortSignal.timeout(60000) });
     if (healthRes.ok) {
       mlServer = true;
     }
@@ -20,7 +20,7 @@ export async function GET() {
   // Check ingest status
   if (mlServer) {
     try {
-      const ingestRes = await fetch(`${ML_API_URL}/ingest-status`, { signal: AbortSignal.timeout(5000) });
+      const ingestRes = await fetch(`${ML_API_URL}/ingest-status`, { signal: AbortSignal.timeout(30000) });
       if (ingestRes.ok) {
         const data = await ingestRes.json();
         ingest = data.running;

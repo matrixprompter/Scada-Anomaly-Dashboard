@@ -18,7 +18,7 @@ export async function POST(request: Request) {
         samples: 50,
         delay: 0.05,
       }),
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(90000),
     });
 
     const data = await res.json();
@@ -30,3 +30,5 @@ export async function POST(request: Request) {
     );
   }
 }
+
+export const maxDuration = 120;
