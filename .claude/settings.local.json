@@ -38,7 +38,8 @@
       "Bash(C:/Users/s.gunduz/Desktop/proje_1_scada_anomali/venv/Scripts/python.exe:*)",
       "Bash(C:/Users/s.gunduz/Desktop/proje_1_scada_anomali/scada-anomaly-dashboard/venv/Scripts/python.exe:*)",
       "Bash(\"C:/Users/s.gunduz/Desktop/proje_1_scada_anomali/scada-anomaly-dashboard/venv/Scripts/python.exe\" \"C:/Users/s.gunduz/Desktop/proje_1_scada_anomali/scada-anomaly-dashboard/python/ingest_cmapss.py\" --units 1 --samples 2 --delay 0.1)",
-      "Bash(echo \"EXIT: $?\")"
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(xargs -I {} bash -c 'echo \"=== {} ===\" && head -20 \"{}\"')"
     ]
   }
 }
