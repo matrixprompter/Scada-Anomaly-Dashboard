@@ -26,7 +26,7 @@ from models.isolation_forest import IsolationForestModel
 from models.lstm_autoencoder import LSTMAnomalyDetector
 from models.rul_predictor import RULPredictor
 from explainer import SHAPExplainer
-from data_prep import SCADA_SENSOR_COLUMNS, SENSOR_COLUMNS, WINDOW_SIZE
+from data_prep import SCADA_SENSOR_COLUMNS, SENSOR_COLUMNS, WINDOW_SIZE, extract_cmapss_zip
 
 import supabase_client as db
 
@@ -51,6 +51,9 @@ async def lifespan(app: FastAPI):
     global if_model, lstm_model, rul_model, shap_explainer, sensor_columns
 
     print("Modeller yukleniyor...")
+
+    # Extract CMAPSS data from zip if needed
+    extract_cmapss_zip()
 
     # Scaler'dan sensor sayisi al ve dogru sensor listesini belirle
     import joblib

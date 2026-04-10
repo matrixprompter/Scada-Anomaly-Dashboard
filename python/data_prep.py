@@ -8,6 +8,7 @@ P1-201: Veri Hazirlama
 """
 
 import os
+import zipfile
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
@@ -16,6 +17,7 @@ import joblib
 from pathlib import Path
 
 DATA_DIR = Path(__file__).parent.parent / "data"
+CMAPSS_ZIP = DATA_DIR / "6. Turbofan Engine Degradation Simulation Data Set" / "CMAPSSData.zip"
 MODELS_DIR = Path(__file__).parent / "models" / "saved"
 WINDOW_SIZE = 30
 TEST_RATIO = 0.2
@@ -45,10 +47,28 @@ SCADA_SENSOR_COLUMNS = [
 ]
 
 
+def extract_cmapss_zip():
+    """Zip dosyasindan CMAPSS txt dosyalarini cikarir."""
+    if CMAPSS_ZIP.exists():
+        print(f"CMAPSS zip'ten cikariliyor: {CMAPSS_ZIP}")
+        with zipfile.ZipFile(CMAPSS_ZIP, "r") as zf:
+            for name in zf.namelist():
+                if name.endswith(".txt"):
+                    target = DATA_DIR / Path(name).name
+                    if not target.exists():
+                        with open(target, "wb") as f:
+                            f.write(zf.read(name))
+        print("Zip cikarildi.")
+
+
 def load_cmapss_data() -> tuple[pd.DataFrame, np.ndarray]:
     """NASA CMAPSS train_FD001.txt ve RUL_FD001.txt yukle."""
     train_path = DATA_DIR / "train_FD001.txt"
     rul_path = DATA_DIR / "RUL_FD001.txt"
+
+    # If txt doesn't exist, try extracting from zip
+    if not train_path.exists():
+        extract_cmapss_zip()
 
     if not train_path.exists():
         raise FileNotFoundError(

@@ -9,6 +9,7 @@ NASA CMAPSS verisini ML API + Next.js API uzerinden Supabase'e yukler.
 import sys
 import time
 import argparse
+import zipfile
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 
@@ -17,6 +18,7 @@ import pandas as pd
 import requests
 
 DATA_DIR = Path(__file__).parent.parent / "data"
+CMAPSS_ZIP = DATA_DIR / "6. Turbofan Engine Degradation Simulation Data Set" / "CMAPSSData.zip"
 ML_API_URL = "http://localhost:8000"
 NEXT_API_URL = "http://localhost:3000"
 
@@ -51,9 +53,23 @@ def severity_from_score(score: float) -> str:
 
 def load_data() -> pd.DataFrame:
     train_path = DATA_DIR / "train_FD001.txt"
+
+    # If txt doesn't exist, try extracting from zip
+    if not train_path.exists() and CMAPSS_ZIP.exists():
+        print(f"train_FD001.txt bulunamadi, zip'ten cikariliyor: {CMAPSS_ZIP}")
+        with zipfile.ZipFile(CMAPSS_ZIP, "r") as zf:
+            for name in zf.namelist():
+                if name.endswith(".txt"):
+                    # Extract to DATA_DIR with flat structure
+                    target = DATA_DIR / Path(name).name
+                    if not target.exists():
+                        with open(target, "wb") as f:
+                            f.write(zf.read(name))
+        print("Zip cikarildi.")
+
     if not train_path.exists():
         print(f"HATA: {train_path} bulunamadi!")
-        sys.exit(1)
+        raise FileNotFoundError(f"{train_path} bulunamadi")
 
     df = pd.read_csv(train_path, sep=r"\s+", header=None, names=CMAPSS_COLUMNS)
     print(f"Veri yuklendi: {len(df)} satir, {df['unit_id'].nunique()} engine unit")
